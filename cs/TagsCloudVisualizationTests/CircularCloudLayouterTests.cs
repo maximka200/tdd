@@ -1,34 +1,201 @@
 using System.Drawing;
 using FluentAssertions;
+using NUnit.Framework.Interfaces;
 using TagCloud;
+using TagCloud.Visualisation;
+using Color = SixLabors.ImageSharp.Color;
 
 namespace TagCloudTests;
 
+[TestFixture]
 public class CircularCloudLayouterTests
 {
     private CircularCloudLayouter cloudLayouter;
-    
+    private CloudVisualizer? visualizer;
+    private Point center;
+
     [SetUp]
     public void Setup()
     {
-        var center = new Point(0, 0);
+        center = new Point(0, 0);
         cloudLayouter = new CircularCloudLayouter(center);
+        
+        var config = new CloudVisualizationConfigBuilder()
+            .WithImageSize(800, 800)
+            .WithBackground(Color.White)
+            .WithCenter(new Point(400, 400))
+            .WithRandomRectangleColors() 
+            .Build();
+
+        visualizer = new CloudVisualizer(config);
+    }
+    
+    [TearDown]
+    public void TearDown()
+    {
+        var context = TestContext.CurrentContext;
+        
+        if (context.Result.Outcome.Status != TestStatus.Failed)
+            return;
+
+        if (cloudLayouter.Rectangles.Count == 0)
+            return;
+        
+        var relativeFileName = Path.Combine(
+            "Failures",
+            $"{context.Test.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+        
+        visualizer?.DrawLayout(cloudLayouter.Rectangles, relativeFileName);
+        
+        var projectRoot = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        var fullPath = Path.Combine(projectRoot, relativeFileName);
+        
+        TestContext.Out.WriteLine($"Tag cloud visualization saved to file {fullPath}");
     }
 
+
     [Test]
-    [TestCase(0, 0)]
-    [TestCase(1, 0)]
-    [TestCase(0, 1)]
-    [TestCase(-1, 0)]
-    [TestCase(0, -1)]
-    [TestCase(-10, -19)]
-    public void PutNextRectangle_WidthOrLengthLessThanOne_ShouldThrowException(int width, int height)
+    [TestCase(0)]
+    [TestCase(-1)]
+    [TestCase(-10)]
+    public void PutNextRectangle_WidthLessThanOne_ShouldThrowForWidth(int width)
     {
-        var rectangleSize = new Size(width, height);
+        var rectangleSize = new Size(width, 10);
 
         var act = () => cloudLayouter.PutNextRectangle(rectangleSize);
 
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("Размер прямоугольника должен быть положительным");
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage("Ширина прямоугольника должна быть положительной (Parameter 'Width')");
     }
+
+    [Test]
+    [TestCase(0)]
+    [TestCase(-1)]
+    [TestCase(-10)]
+    public void PutNextRectangle_HeightLessThanOne_ShouldThrowForHeight(int height)
+    {
+        var rectangleSize = new Size(10, height);
+
+        var act = () => cloudLayouter.PutNextRectangle(rectangleSize);
+
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage("Высота прямоугольника должна быть положительной (Parameter 'Height')");
+    }
+
+    [Test]
+    public void PutNextRectangle_WithValidSize_ShouldNotThrow()
+    {
+        var rectangleSize = new Size(10, 20);
+
+        var act = () => cloudLayouter.PutNextRectangle(rectangleSize);
+
+        act.Should().NotThrow();
+    }
+
+    [Test]
+    public void PutNextRectangle_FirstRectangle_ShouldBePlacedInCenter()
+    {
+        var size = new Size(20, 10);
+
+        var rect = cloudLayouter.PutNextRectangle(size);
+
+        GetCenter(rect).Should().Be(center);
+        rect.Size.Should().Be(size);
+
+        cloudLayouter.Rectangles.Should().ContainSingle();
+        cloudLayouter.Rectangles.Single().Should().Be(rect);
+    }
+    
+    [Test]
+    public void PutNextRectangle_ManyRectangles_ShouldPutCorrectNumber()
+    {
+        var size = new Size(30, 15);
+        var rectangleCount = 0;
+
+        for (var i = 0; i < 50; i++)
+        {
+            cloudLayouter.PutNextRectangle(size);
+            rectangleCount++;
+        }
+
+        cloudLayouter.Rectangles.Count.Should().Be(rectangleCount);
+    }
+
+    [Test]
+    public void PutNextRectangle_ManyRectangles_ShouldNotIntersect()
+    {
+        var size = new Size(30, 15);
+        var rectangles = new List<Rectangle>();
+
+        for (var i = 0; i < 50; i++)
+            rectangles.Add(cloudLayouter.PutNextRectangle(size));
+
+        for (var i = 0; i < rectangles.Count; i++)
+        for (var j = i + 1; j < rectangles.Count; j++)
+        {
+            rectangles[i].IntersectsWith(rectangles[j]).Should().BeFalse();
+        }
+    }
+    
+    [Test]
+    [Repeat(10)]
+    public void PutNextRectangle_CloudForManyRectangles_ShouldBeDense()
+    {
+        var random = new Random(42);
+        
+        for (var i = 0; i < 30; i++)
+        {
+            var size = new Size(
+                width: random.Next(10, 50),
+                height: random.Next(10, 50));
+            
+            cloudLayouter.PutNextRectangle(size);
+        }
+
+        var density = GetDensity(cloudLayouter.Rectangles);
+        
+        density.Should().BeGreaterThan(0.4);
+    }
+    
+    // для проверки визуализации падений тестов
+    [Test]
+    [Explicit]
+    public void PutNextRectangle_GenerateRandomCloudAndFail()
+    {
+        var random = new Random(42);
+        
+        for (var i = 0; i < 30; i++)
+        {
+            var size = new Size(
+                width: random.Next(10, 50),
+                height: random.Next(10, 50));
+            
+            cloudLayouter.PutNextRectangle(size);
+        }
+        
+        Assert.Fail();
+    }
+
+    private static double GetDensity(IReadOnlyCollection<Rectangle> rectangles)
+    {
+        if (rectangles.Count == 0)
+            return 0;
+
+        var minX = rectangles.Min(r => r.Left);
+        var maxX = rectangles.Max(r => r.Right);
+        var minY = rectangles.Min(r => r.Top);
+        var maxY = rectangles.Max(r => r.Bottom);
+
+        var boundingWidth = maxX - minX;
+        var boundingHeight = maxY - minY;
+        var boundingArea = (double)boundingWidth * boundingHeight;
+
+        var cloudArea = rectangles.Sum(r => r.Width * r.Height);
+
+        return cloudArea / boundingArea;
+    }
+
+    private static Point GetCenter(Rectangle rect) =>
+        new(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
 }
