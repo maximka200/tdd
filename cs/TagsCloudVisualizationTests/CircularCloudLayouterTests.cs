@@ -138,23 +138,24 @@ public class CircularCloudLayouterTests
     }
     
     [Test]
-    [Repeat(10)]
+    [Repeat(100)]
     public void PutNextRectangle_CloudForManyRectangles_ShouldBeDense()
     {
         var random = new Random(42);
         
-        for (var i = 0; i < 30; i++)
+        for (var i = 0; i < 300; i++)
         {
             var size = new Size(
-                width: random.Next(10, 50),
-                height: random.Next(10, 50));
+                width: random.Next(15, 20),
+                height: 7
+            );
             
             cloudLayouter.PutNextRectangle(size);
         }
 
         var density = GetDensity(cloudLayouter.Rectangles);
         
-        density.Should().BeGreaterThan(0.5);
+        density.Should().BeGreaterThan(0.75);
     }
     
     // для проверки визуализации падений тестов
@@ -176,23 +177,42 @@ public class CircularCloudLayouterTests
         Assert.Fail();
     }
 
-    private static double GetDensity(IReadOnlyCollection<Rectangle> rectangles)
+    private double GetDensity(IReadOnlyCollection<Rectangle> rectangles)
     {
         if (rectangles.Count == 0)
             return 0;
+        
+        var areaRects = rectangles.Sum(r => (double)r.Width * r.Height);
+        
+        var maxDistSquared = 0.0;
 
-        var minX = rectangles.Min(r => r.Left);
-        var maxX = rectangles.Max(r => r.Right);
-        var minY = rectangles.Min(r => r.Top);
-        var maxY = rectangles.Max(r => r.Bottom);
+        foreach (var r in rectangles)
+        {
+            var corners = new[]
+            {
+                new Point(r.Left,  r.Top),
+                new Point(r.Right, r.Top),
+                new Point(r.Left,  r.Bottom),
+                new Point(r.Right, r.Bottom)
+            };
 
-        var boundingWidth = maxX - minX;
-        var boundingHeight = maxY - minY;
-        var boundingArea = (double)boundingWidth * boundingHeight;
+            foreach (var p in corners)
+            {
+                var dx = p.X - center.X;
+                var dy = p.Y - center.Y;
+                var distSq = (double)dx * dx + dy * dy;
+                if (distSq > maxDistSquared)
+                    maxDistSquared = distSq;
+            }
+        }
 
-        var cloudArea = rectangles.Sum(r => r.Width * r.Height);
+        if (maxDistSquared <= 0)
+            return 0;
 
-        return cloudArea / boundingArea;
+        var radius = Math.Sqrt(maxDistSquared);
+        var circleArea = Math.PI * radius * radius;
+
+        return areaRects / circleArea;
     }
 
     private static Point GetCenter(Rectangle rect) =>
