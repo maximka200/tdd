@@ -113,8 +113,9 @@ public class CircularCloudLayouter(Point center)
     {
         var best = rectangle;
         var bestCenter = GetCenter(best);
-        var bestDistX = Math.Abs(center.X - bestCenter.X);
-        var bestDistY = Math.Abs(center.Y - bestCenter.Y);
+
+        var bestDistX = DistanceXToCenter(bestCenter);
+        var bestDistY = DistanceYToCenter(bestCenter);
 
         var step = 1;
         while (step <= MaxMoveStep)
@@ -126,10 +127,11 @@ public class CircularCloudLayouter(Point center)
             };
 
             var shiftedCenter = GetCenter(shifted);
-            var distX = Math.Abs(center.X - shiftedCenter.X);
-            var distY = Math.Abs(center.Y - shiftedCenter.Y);
-
-            if (dx != 0 && distX >= bestDistX || dy != 0 && distY >= bestDistY)
+            var distX = DistanceXToCenter(shiftedCenter);
+            var distY = DistanceYToCenter(shiftedCenter);
+            
+            if ((dx != 0 && distX >= bestDistX) ||
+                (dy != 0 && distY >= bestDistY))
                 break;
 
             if (IntersectsWithAny(shifted))
@@ -153,12 +155,20 @@ public class CircularCloudLayouter(Point center)
         var halfH = rect.Height / 2.0;
         return Math.Sqrt(halfW * halfW + halfH * halfH);
     }
+
+    private int DistanceXToCenter(Point p) => Math.Abs(center.X - p.X);
+    private int DistanceYToCenter(Point p) => Math.Abs(center.Y - p.Y);
+
+    private static double DistanceSquared(Point p1, Point p2)
+    {
+        var dx = p1.X - p2.X;
+        var dy = p1.Y - p2.Y;
+        return (double)dx * dx + (double)dy * dy;
+    }
     
     private static bool CirclesIntersect(Point c1, double r1, Point c2, double r2)
     {
-        var dx = c1.X - c2.X;
-        var dy = c1.Y - c2.Y;
-        var distSq = (double)dx * dx + (double)dy * dy;
+        var distSq = DistanceSquared(c1, c2);
         var sum = r1 + r2;
         return distSq <= sum * sum;
     }
