@@ -8,11 +8,12 @@ public class CloudVisualizationConfigBuilder
 {
     private int width = 800;
     private int height = 800;
-    private Rgba32 backgroundColor = SixLabors.ImageSharp.Color.White;
+    
+    private Rgba32 backgroundColor = CloudColor.White.ToRgba32();
     private Point? center;
+
     private Func<DrawingRectangle, int, Rgba32> rectangleColorProvider =
-        (_, _) => new Rgba32(100, 100, 100
-            );
+        (_, _) => CloudColor.DarkGray.ToRgba32();
 
     public CloudVisualizationConfigBuilder WithImageSize(int inputWidth, int inputHeight)
     {
@@ -20,22 +21,23 @@ public class CloudVisualizationConfigBuilder
         height = inputHeight;
         return this;
     }
-
-    public CloudVisualizationConfigBuilder WithBackground(Rgba32 color)
+    
+    public CloudVisualizationConfigBuilder WithBackground(CloudColor color)
     {
-        backgroundColor = color; 
+        backgroundColor = color.ToRgba32();
         return this;
     }
 
     public CloudVisualizationConfigBuilder WithCenter(Point inputCenter)
     {
-        center = inputCenter; 
+        center = inputCenter;
         return this;
     }
-
-    public CloudVisualizationConfigBuilder WithRectangleColor(Rgba32 color)
+    
+    public CloudVisualizationConfigBuilder WithRectangleColor(CloudColor color)
     {
-        rectangleColorProvider = (_, _) => color;
+        var rgba = color.ToRgba32();
+        rectangleColorProvider = (_, _) => rgba;
         return this;
     }
 
@@ -46,11 +48,10 @@ public class CloudVisualizationConfigBuilder
             new Rgba32(
                 (byte)random.Next(0, 256),
                 (byte)random.Next(0, 256),
-                (byte)random.Next(0, 256)
-                );
+                (byte)random.Next(0, 256));
         return this;
     }
-    
+
     public CloudVisualizationConfig Build()
     {
         var actualCenter = center ?? new Point(width / 2, height / 2);

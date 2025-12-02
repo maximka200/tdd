@@ -40,9 +40,9 @@ public class CloudVisualizerTests
         var rectangles = new List<Rectangle>();
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(400, 400))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200)) 
+            .WithRectangleColor(CloudColor.Blue) 
             .Build();
         var visualizer = new CloudVisualizer(config);
         const string filePath = "cloud_empty.png";
@@ -62,9 +62,9 @@ public class CloudVisualizerTests
         var rectangles = new List<Rectangle>();
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(400, 400))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200)) 
+            .WithRectangleColor(CloudColor.Red) 
             .Build();
         var visualizer = new CloudVisualizer(config);
         
@@ -80,9 +80,9 @@ public class CloudVisualizerTests
         var rectangles = GenerateDefaultRectangles(60, new Size(40, 20));
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(400, 400))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200)) 
+            .WithRectangleColor(CloudColor.Blue) 
             .Build();
         var visualizer = new CloudVisualizer(config);
         const string fileName = "cloud_fixed_blue.png";
@@ -98,7 +98,7 @@ public class CloudVisualizerTests
         var rectangles = GenerateDefaultRectangles(80, new Size(30, 30));
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(1000, 1000)
-            .WithBackground(new Rgba32(30, 30, 30, 255)) 
+            .WithBackground(CloudColor.White) 
             .WithCenter(new Point(500, 500))
             .WithRandomRectangleColors(seed: 42)
             .Build();
@@ -116,7 +116,7 @@ public class CloudVisualizerTests
         var rectangles = GenerateDefaultRectangles(50, new Size(50, 15));
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 600)
-            .WithBackground(new Rgba32(250, 250, 240, 255))
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(250, 200))
             .WithRandomRectangleColors(seed: 7)
             .Build();
@@ -134,9 +134,9 @@ public class CloudVisualizerTests
         var rectangles = GenerateInvertedRectangles(60, new Size(100, 20));
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(400, 400))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200)) 
+            .WithRectangleColor(CloudColor.Red) 
             .Build();
         var visualizer = new CloudVisualizer(config);
         const string fileName = "cloud_diff_rectangles.png";
@@ -152,9 +152,9 @@ public class CloudVisualizerTests
         var rectangles = GenerateGrowingRectangles(12, new Size(10, 10), 2);
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(8000, 8000)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.White)
             .WithCenter(new Point(4000, 4000))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200)) 
+            .WithRectangleColor(CloudColor.Red) 
             .Build();
         var visualizer = new CloudVisualizer(config);
         const string fileName = "cloud_growing_rectangles.png";

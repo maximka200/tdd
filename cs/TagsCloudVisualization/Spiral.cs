@@ -22,8 +22,7 @@ public class Spiral(Point center, double angleIncrement = 0.005)
     {
         placementFailureStreak++;
 
-        currentAngleStepMultiplier =
-            Math.Min(1 << Math.Min(placementFailureStreak, 10), MaxAngleStepMultiplier);
+        currentAngleStepMultiplier = Math.Min(1 << Math.Min(placementFailureStreak, 10), MaxAngleStepMultiplier);
 
         return AdvanceByCurrentStep();
     }

@@ -46,9 +46,9 @@ public class CircularCloudLayouter(Point center)
     private void AddRectangle(Rectangle rect)
     {
         rectangles.Add(rect);
-        var c = GetCenter(rect);
-        var r = GetBoundingCircleRadius(rect);
-        circleBounds.Add((c, r));
+        var currCenter = GetCenter(rect);
+        var currRadius = GetBoundingCircleRadius(rect);
+        circleBounds.Add((currCenter, currRadius));
     }
 
     private static Rectangle CreateRectangleByCenter(Point point, Size size)
@@ -129,8 +129,7 @@ public class CircularCloudLayouter(Point center)
             var distX = Math.Abs(center.X - shiftedCenter.X);
             var distY = Math.Abs(center.Y - shiftedCenter.Y);
 
-            if (dx != 0 && distX >= bestDistX ||
-                dy != 0 && distY >= bestDistY)
+            if (dx != 0 && distX >= bestDistX || dy != 0 && distY >= bestDistY)
                 break;
 
             if (IntersectsWithAny(shifted))

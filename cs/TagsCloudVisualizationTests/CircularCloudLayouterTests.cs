@@ -22,7 +22,7 @@ public class CircularCloudLayouterTests
         
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(CloudColor.Red)
             .WithCenter(new Point(400, 400))
             .WithRandomRectangleColors() 
             .Build();
