@@ -40,10 +40,10 @@ public class CircularCloudLayouterTests
 
         if (cloudLayouter.Rectangles.Count == 0)
             return;
-        
+        var now = DateTime.Now;
         var relativeFileName = Path.Combine(
             "Failures",
-            $"{context.Test.Name}_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+            $"{context.Test.Name}_{now:yyyyMMdd_HHmmss}_{now.Ticks}.png");
         
         visualizer?.DrawLayout(cloudLayouter.Rectangles, relativeFileName);
         
@@ -53,7 +53,6 @@ public class CircularCloudLayouterTests
         
         TestContext.Out.WriteLine($"Tag cloud visualization saved to file {fullPath}");
     }
-
 
     [Test]
     [TestCase(0)]
@@ -155,7 +154,7 @@ public class CircularCloudLayouterTests
 
         var density = GetDensity(cloudLayouter.Rectangles);
         
-        density.Should().BeGreaterThan(0.4);
+        density.Should().BeGreaterThan(0.5);
     }
     
     // для проверки визуализации падений тестов

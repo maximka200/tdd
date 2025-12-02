@@ -1,46 +1,29 @@
+using System.Drawing;
 using SixLabors.ImageSharp.PixelFormats;
 using TagCloud;
 using TagCloud.Visualisation;
 using Color = SixLabors.ImageSharp.Color;
-using Point = System.Drawing.Point;
-using Rectangle = System.Drawing.Rectangle;
-using Size = System.Drawing.Size;
 
 namespace TagsCloudVisualisationExamples;
 
-[TestFixture]
-[Explicit]
-public class Examples
+public class Program
 {
     private Point layoutCenter;
     private CircularCloudLayouter layouter;
     private const string ExamplesRepository = "Examples";
 
-    [SetUp]
-    public void SetUp()
+    public void Main()
     {
         layoutCenter = new Point(0, 0);
         layouter = new CircularCloudLayouter(layoutCenter);
+        
+        WithRandomRectangleColorsOnDarkBackground();
+        WithDifferentRectangles();
+        WithShiftedCenter();
+
     }
 
-    [Test]
-    public void WithFixedBlueRectangles()
-    {
-        var rectangles = GenerateDefaultRectangles(60, new Size(40, 20));
-        var config = new CloudVisualizationConfigBuilder()
-            .WithImageSize(800, 800)
-            .WithBackground(Color.White)
-            .WithCenter(new Point(400, 400))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200))
-            .Build();
-        var visualizer = new CloudVisualizer(config);
-        const string fileName = "cloud_fixed_blue.png";
-
-        visualizer.DrawLayout(rectangles, Path.Combine(ExamplesRepository, fileName));
-    }
-
-    [Test]
-    public void WithRandomRectangleColorsOnDarkBackground()
+    private void WithRandomRectangleColorsOnDarkBackground()
     {
         var rectangles = GenerateDefaultRectangles(200, new Size(30, 30));
         var config = new CloudVisualizationConfigBuilder()
@@ -54,8 +37,7 @@ public class Examples
 
         visualizer.DrawLayout(rectangles, Path.Combine(ExamplesRepository, fileName));
     }
-
-    [Test]
+    
     public void WithShiftedCenter()
     {
         var rectangles = GenerateDefaultRectangles(50, new Size(50, 15));
@@ -71,34 +53,17 @@ public class Examples
         visualizer.DrawLayout(rectangles, Path.Combine(ExamplesRepository, fileName));
     }
 
-    [Test]
-    public void WithDifferentRectangles()
+    private void WithDifferentRectangles()
     {
         var rectangles = GenerateInvertedRectangles(60, new Size(100, 20));
         var config = new CloudVisualizationConfigBuilder()
             .WithImageSize(800, 800)
-            .WithBackground(Color.White)
+            .WithBackground(SixLabors.ImageSharp.Color.White)
             .WithCenter(new Point(400, 400))
             .WithRectangleColor(new Rgba32(100, 149, 237, 200))
             .Build();
         var visualizer = new CloudVisualizer(config);
         const string fileName = "cloud_diff_rectangles.png";
-
-        visualizer.DrawLayout(rectangles, Path.Combine(ExamplesRepository, fileName));
-    }
-
-    [Test]
-    public void WithGrowingRectangles()
-    {
-        var rectangles = GenerateGrowingRectangles(12, new Size(10, 10), 2);
-        var config = new CloudVisualizationConfigBuilder()
-            .WithImageSize(8000, 8000)
-            .WithBackground(Color.White)
-            .WithCenter(new Point(4000, 4000))
-            .WithRectangleColor(new Rgba32(100, 149, 237, 200))
-            .Build();
-        var visualizer = new CloudVisualizer(config);
-        const string fileName = "cloud_growing_rectangles.png";
 
         visualizer.DrawLayout(rectangles, Path.Combine(ExamplesRepository, fileName));
     }
@@ -139,23 +104,6 @@ public class Examples
             if (size.Height < 5) size.Height = 5;
 
             var rect = layouter.PutNextRectangle(size);
-            rectangles.Add(rect);
-        }
-
-        return rectangles;
-    }
-
-    private IEnumerable<Rectangle> GenerateGrowingRectangles(int count, Size baseSize, int growingCoeff)
-    {
-        var rectangles = new List<Rectangle>();
-
-        for (var i = 0; i < count; i++)
-        {
-            baseSize = new Size(baseSize.Width * growingCoeff, baseSize.Height * growingCoeff);
-            if (baseSize.Width < 5) baseSize.Width = 5;
-            if (baseSize.Height < 5) baseSize.Height = 5;
-
-            var rect = layouter.PutNextRectangle(baseSize);
             rectangles.Add(rect);
         }
 

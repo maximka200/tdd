@@ -1,5 +1,4 @@
 using System.Drawing;
-using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 
 namespace TagCloud;
 
@@ -7,13 +6,11 @@ public class CircularCloudLayouter(Point center)
 {
     private readonly Spiral spiral = new(center);
     private readonly List<Rectangle> rectangles = [];
+    private readonly List<(Point Center, double Radius)> circleBounds = [];
+
     public IReadOnlyCollection<Rectangle> Rectangles => rectangles.AsReadOnly();
     
-    private int failureStreak;
-    private int currentStep = DefaultStep;
-
-    private const int DefaultStep = 1;
-    private const int MaxStep = 1000;
+    private const int MaxMoveStep = 64;
 
     public Rectangle PutNextRectangle(Size rectangleSize)
     {
@@ -28,43 +25,30 @@ public class CircularCloudLayouter(Point center)
         if (rectangles.Count == 0)
         {
             var first = CreateRectangleByCenter(center, rectangleSize);
-            rectangles.Add(first);
-            ResetStepStrategy();
+            AddRectangle(first);
             return first;
         }
-
-        while (true)
+        
+        var pointOnSpiral = spiral.GetNextPoint();
+        var candidate = CreateRectangleByCenter(pointOnSpiral, rectangleSize);
+        
+        while (IntersectsWithAny(candidate))
         {
-            var pointOnSpiral = spiral.GetNextPoint(currentStep);
-            var candidate = CreateRectangleByCenter(pointOnSpiral, rectangleSize);
-
-            if (IntersectsWithAny(candidate))
-            {
-                RegisterFailure();
-                continue;
-            }
-            
-            var compressed = MoveToCenter(candidate);
-            rectangles.Add(compressed);
-            ResetStepStrategy();
-            return compressed;
+            pointOnSpiral = spiral.RetryGetNextPoint();
+            candidate = CreateRectangleByCenter(pointOnSpiral, rectangleSize);
         }
+        
+        var compressed = MoveToCenter(candidate);
+        AddRectangle(compressed);
+        return compressed;
     }
     
-    private void ResetStepStrategy()
+    private void AddRectangle(Rectangle rect)
     {
-        failureStreak = 0;
-        currentStep = DefaultStep;
-    }
-
-    private void RegisterFailure()
-    {
-        failureStreak++;
-        
-        currentStep = Math.Min(1 << Math.Min(failureStreak, 10), MaxStep);
-
-        if (currentStep > MaxStep)
-            currentStep = MaxStep;
+        rectangles.Add(rect);
+        var c = GetCenter(rect);
+        var r = GetBoundingCircleRadius(rect);
+        circleBounds.Add((c, r));
     }
 
     private static Rectangle CreateRectangleByCenter(Point point, Size size)
@@ -73,10 +57,29 @@ public class CircularCloudLayouter(Point center)
         var y = point.Y - size.Height / 2;
         return new Rectangle(x, y, size.Width, size.Height);
     }
-
-    private bool IntersectsWithAny(Rectangle rect) =>
-        rectangles.Any(r => r.IntersectsWith(rect));
     
+    private bool IntersectsWithAny(Rectangle rect)
+    {
+        if (rectangles.Count == 0)
+            return false;
+
+        var candidateCenter = GetCenter(rect);
+        var candidateRadius = GetBoundingCircleRadius(rect);
+
+        for (var i = 0; i < rectangles.Count; i++)
+        {
+            var (centerExisting, radiusExisting) = circleBounds[i];
+            
+            if (!CirclesIntersect(candidateCenter, candidateRadius, centerExisting, radiusExisting))
+                continue;
+            
+            if (rectangles[i].IntersectsWith(rect))
+                return true;
+        }
+
+        return false;
+    }
+
     private Rectangle MoveToCenter(Rectangle rectangle)
     {
         while (true)
@@ -84,46 +87,80 @@ public class CircularCloudLayouter(Point center)
             var rectCenter = GetCenter(rectangle);
             var dx = Math.Sign(center.X - rectCenter.X);
             var dy = Math.Sign(center.Y - rectCenter.Y);
-            
+
             if (dx == 0 && dy == 0)
                 return rectangle;
+            
+            var movedX = MoveAlongAxis(rectangle, dx, 0);
+            var movedXy = MoveAlongAxis(movedX, 0, dy);
 
-            var before = rectangle;
-            
-            var rough = MoveAtTheWay(rectangle, dx, dy, toCenter: true, maxStep: 64);
-            
-            var exact = MoveAtTheWay(rough, dx, dy, toCenter: true, maxStep: 1);
+            if (movedXy == rectangle)
+                return movedXy;
 
-            rectangle = exact;
-            
-            if (rectangle == before)
-                return rectangle;
+            rectangle = movedXy;
         }
     }
-
-    private Rectangle MoveAtTheWay(Rectangle rectangle, int dx, int dy, bool toCenter, int maxStep)
+    
+    private Rectangle MoveAlongAxis(Rectangle rectangle, int dx, int dy)
     {
-        var step = 1;
-        var sign = toCenter ? 1 : -1;
+        if (dx == 0 && dy == 0)
+            return rectangle;
 
-        while (step <= maxStep)
+        return FindBestPositionWithExponentialStep(rectangle, dx, dy);
+    }
+
+    private Rectangle FindBestPositionWithExponentialStep(Rectangle rectangle, int dx, int dy)
+    {
+        var best = rectangle;
+        var bestCenter = GetCenter(best);
+        var bestDistX = Math.Abs(center.X - bestCenter.X);
+        var bestDistY = Math.Abs(center.Y - bestCenter.Y);
+
+        var step = 1;
+        while (step <= MaxMoveStep)
         {
             var shifted = rectangle with
             {
-                X = rectangle.X + sign * dx * step,
-                Y = rectangle.Y + sign * dy * step
+                X = rectangle.X + dx * step,
+                Y = rectangle.Y + dy * step
             };
+
+            var shiftedCenter = GetCenter(shifted);
+            var distX = Math.Abs(center.X - shiftedCenter.X);
+            var distY = Math.Abs(center.Y - shiftedCenter.Y);
+
+            if (dx != 0 && distX >= bestDistX ||
+                dy != 0 && distY >= bestDistY)
+                break;
 
             if (IntersectsWithAny(shifted))
                 break;
 
-            rectangle = shifted;
+            best = shifted;
+            bestDistX = distX;
+            bestDistY = distY;
             step *= 2;
         }
 
-        return rectangle;
+        return best;
     }
-
+    
     private static Point GetCenter(Rectangle rect) =>
         new(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+    
+    private static double GetBoundingCircleRadius(Rectangle rect)
+    {
+        var halfW = rect.Width / 2.0;
+        var halfH = rect.Height / 2.0;
+        return Math.Sqrt(halfW * halfW + halfH * halfH);
+    }
+    
+    private static bool CirclesIntersect(Point c1, double r1, Point c2, double r2)
+    {
+        var dx = c1.X - c2.X;
+        var dy = c1.Y - c2.Y;
+        var distSq = (double)dx * dx + (double)dy * dy;
+        var sum = r1 + r2;
+        return distSq <= sum * sum;
+    }
 }
